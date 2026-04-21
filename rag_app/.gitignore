@@ -1,0 +1,13 @@
+# Data / vector stores / caches
+data/*.pdf
+chroma_db/
+faiss_index/
+.embedding_cache/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env

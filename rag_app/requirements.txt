@@ -1,0 +1,25 @@
+# ---- Core app ----
+streamlit>=1.36.0
+
+# ---- LangChain (split packages, modern API) ----
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-core>=0.3.0
+langchain-text-splitters>=0.3.0
+langchain-ollama>=0.2.0
+langchain-chroma>=0.1.4
+
+# ---- Vector stores ----
+chromadb>=0.5.0
+faiss-cpu>=1.8.0
+
+# ---- PDF ingestion ----
+pymupdf>=1.24.0
+pdfplumber>=0.11.0
+
+# ---- Ollama python client (used by langchain-ollama) ----
+ollama>=0.3.0
+
+# ---- Utilities ----
+numpy>=1.26.0
+tqdm>=4.66.0
