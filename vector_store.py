@@ -22,7 +22,9 @@ which one is in use.
 
 from __future__ import annotations
 
+import gc
 import shutil
+import time
 from pathlib import Path
 from typing import List, Literal, Optional, Tuple
 
@@ -41,6 +43,60 @@ DEFAULT_COLLECTION = "rag_docs"
 
 
 # ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+def _safe_rmtree(path: Path, retries: int = 5, delay: float = 0.4) -> None:
+    """Best-effort recursive delete that retries on Windows.
+
+    On Windows, files that were memory-mapped by another process (e.g. a
+    Chroma client we just released) can stay locked for a moment after the
+    Python references are gone. A short retry loop with `gc.collect()`
+    between attempts is enough to handle the common case.
+    """
+    if not path.exists():
+        return
+    for attempt in range(retries):
+        try:
+            shutil.rmtree(path)
+            return
+        except PermissionError as e:
+            logger.debug("rmtree attempt %d failed (%s); retrying...", attempt + 1, e)
+            gc.collect()
+            time.sleep(delay)
+    # Last attempt: don't raise — let the caller proceed even if a stray
+    # file is left behind. Chroma will overwrite what it can.
+    shutil.rmtree(path, ignore_errors=True)
+
+
+def _reset_chroma(embeddings: Embeddings, collection_name: str) -> None:
+    """Drop the Chroma collection via the API (preferred on Windows).
+
+    Going through `delete_collection()` avoids fighting the OS over locked
+    files like `data_level0.bin`. We only fall back to deleting the directory
+    if the API path fails outright.
+    """
+    if not CHROMA_DIR.exists() or not (CHROMA_DIR / "chroma.sqlite3").exists():
+        return
+    try:
+        existing = Chroma(
+            collection_name=collection_name,
+            embedding_function=embeddings,
+            persist_directory=str(CHROMA_DIR),
+        )
+        existing.delete_collection()
+        del existing
+        gc.collect()
+        logger.info("Cleared existing Chroma collection '%s'.", collection_name)
+    except Exception as e:
+        # Last-ditch: remove the directory. _safe_rmtree handles Windows locks.
+        logger.warning(
+            "delete_collection() failed (%s); falling back to rmtree.", e
+        )
+        _safe_rmtree(CHROMA_DIR)
+        CHROMA_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# ---------------------------------------------------------------------------
 # Build (from a batch of chunks)
 # ---------------------------------------------------------------------------
 def build_vector_store(
@@ -52,18 +108,16 @@ def build_vector_store(
 ) -> VectorStore:
     """Create a fresh vector store from `docs` and persist it to disk.
 
-    Why `reset=True` by default: during a tutorial we almost always want
-    "ingest replaces everything" — otherwise old chunks from a previous PDF
-    keep leaking into retrieval results and confuse the demo.
+    Why `reset=True` by default: we almost always want "ingest replaces
+    everything" — otherwise old chunks from a previous PDF keep leaking into
+    retrieval results.
     """
     if not docs:
         raise ValueError("No documents to index. Upload & ingest a PDF first.")
 
     if backend == "chroma":
-        if reset and CHROMA_DIR.exists():
-            logger.info("Resetting Chroma dir at %s", CHROMA_DIR)
-            shutil.rmtree(CHROMA_DIR)
-            CHROMA_DIR.mkdir(parents=True, exist_ok=True)
+        if reset:
+            _reset_chroma(embeddings, collection_name)
 
         logger.info("Building Chroma index with %d chunk(s).", len(docs))
         store = Chroma.from_documents(
@@ -77,8 +131,8 @@ def build_vector_store(
     if backend == "faiss":
         logger.info("Building FAISS index with %d chunk(s).", len(docs))
         store = FAISS.from_documents(documents=docs, embedding=embeddings)
-        if reset and FAISS_DIR.exists():
-            shutil.rmtree(FAISS_DIR)
+        if reset:
+            _safe_rmtree(FAISS_DIR)
         FAISS_DIR.mkdir(parents=True, exist_ok=True)
         store.save_local(str(FAISS_DIR))
         return store

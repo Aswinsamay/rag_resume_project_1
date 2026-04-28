@@ -1,9 +1,9 @@
 """
 chunking.py
 -----------
-Four chunking strategies, side-by-side, for teaching.
+Four selectable chunking strategies.
 
-Why chunking matters (say this out loud in the video):
+Why chunking matters:
 - Embeddings encode *one vector per chunk*. If the chunk is too big, the
   vector becomes a "blurry average" of many topics and retrieval gets worse.
 - If the chunk is too small, a single idea is split across multiple chunks and
@@ -96,7 +96,7 @@ def _sentence_chunks(text: str, target_chars: int, sentence_overlap: int) -> Lis
 
 
 # ---------------------------------------------------------------------------
-# Strategy 4: Intentionally BAD chunking (for the teaching demo)
+# Strategy 4: Intentionally BAD chunking
 # ---------------------------------------------------------------------------
 def _bad_chunks(text: str) -> List[str]:
     """Split every N characters with NO overlap and NO word-boundary awareness.
@@ -106,8 +106,8 @@ def _bad_chunks(text: str) -> List[str]:
       - words get cut in half
       - chunks carry almost no standalone meaning
 
-    This is what we show first in the "Bad Chunk Demo" to prove why good
-    chunking matters.
+    Kept as a selectable strategy so users can compare its retrieval/answer
+    quality against the other splitters in the same UI.
     """
     BAD_SIZE = 50
     return [text[i : i + BAD_SIZE] for i in range(0, len(text), BAD_SIZE)]

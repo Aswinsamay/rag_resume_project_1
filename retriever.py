@@ -8,8 +8,8 @@ A thin wrapper around the vector store. It:
    paste into the LLM prompt.
 3. Returns a parallel list of `citation` dicts we can display in the UI.
 
-We keep retrieval logic OUT of generator.py so we can display retrieved
-chunks in the UI even when the user has RAG toggled off (for comparison).
+Retrieval logic lives here (not in generator.py) so the UI can display the
+retrieved chunks alongside the answer for transparency.
 """
 
 from __future__ import annotations

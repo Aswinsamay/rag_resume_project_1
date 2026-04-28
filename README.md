@@ -11,10 +11,8 @@ A 100% local Retrieval-Augmented Generation (RAG) app. Upload PDFs, ask question
 ## Features
 
 - **PDF ingestion** with automatic fallback between PyMuPDF and pdfplumber, header/footer cleanup, and scanned-PDF detection.
-- **Four chunking strategies** — `recursive`, `fixed_size`, `sentence`, and a deliberately broken `bad` mode — selectable from the UI.
+- **Four chunking strategies** — `recursive`, `fixed_size`, `sentence`, and `bad` — selectable from the UI.
 - **Grounded answers** with a strict system prompt: the model must answer from retrieved context only, cite `[source.pdf, page N]` for every claim, and reply "I don't know" when the context doesn't cover the question.
-- **RAG vs No-RAG comparison** — run the same question with and without retrieved context, side by side.
-- **Bad-Chunk Demo** — builds two vector stores from the same PDF (one with broken chunks, one with good chunks) and answers the same question against both, to make the impact of chunking visible.
 - **Chunk Preview tab** — inspect what your current chunking settings actually produce (min/avg/max length, raw text).
 - **Embedding cache** on disk, so re-ingesting the same text is near-instant.
 - **Latency metrics** shown on every ingest and every answer (load / chunk / index / retrieve / LLM times).
@@ -29,7 +27,7 @@ rag_app/
 ├── embeddings.py     # Ollama nomic-embed-text + disk cache
 ├── vector_store.py   # Chroma + FAISS behind a uniform interface
 ├── retriever.py      # top-k retrieval + citation formatting
-├── generator.py      # Ollama LLM + RAG / no-RAG prompts
+├── generator.py      # Ollama LLM + grounded RAG prompt
 ├── utils.py          # logging, paths, timing helpers
 ├── requirements.txt
 └── data/             # uploaded PDFs (git-ignored)
@@ -73,9 +71,8 @@ Then in the browser:
 1. Upload one or more PDFs from the sidebar.
 2. Pick a chunking strategy (start with `recursive`) and adjust chunk size / overlap / top-k if you like.
 3. Click **Ingest Documents**.
-4. Use the **Chat** tab to ask questions. Toggle **Compare RAG vs No-RAG** to see both answers side by side.
+4. Use the **Chat** tab to ask questions; the answer comes back grounded in retrieved context with inline citations.
 5. Use the **Chunk Preview** tab to inspect how your strategy splits the PDF.
-6. Use the **Bad-Chunk Demo** tab (after clicking **Rebuild Bad-Chunk Demo** in the sidebar) to compare answers from a poorly chunked store vs a well chunked store.
 
 ## Configuration
 
